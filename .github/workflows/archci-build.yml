@@ -1,0 +1,83 @@
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build:
+    name: Build rpcs3 for x86_64 ArchLinux
+    runs-on: ubuntu-latest
+
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Cache Git Submodules
+      id: cache-submodules
+      uses: actions/cache@v4
+      with:
+        path: |
+          ./.git/modules
+          ./3rdparty/**/*
+        key: ${{ runner.os }}-rpcs3-submodules-${{ hashFiles('**/.gitmodules') }}
+        restore-keys: |
+            ${{ runner.os }}-rpcs3-submodules-
+            
+    - name: Inizialize Git Submodules
+      if: steps.cache-submodules.outputs.cache-hit |= 'true'
+      run: |
+         git submodule update --init --recursive \
+          && git pull --recurse-submodules
+          
+    - name: Cache ccache
+      id: cache-ccache
+      uses: actions/cache@v4
+      with:
+        path: .cache
+        key: ${{ runner.os }}-ccache-${{ hashFiles('CMakeLists.txt', '**/CMakeLists.txt', '**/*.cpp', '**/*.h') }}
+        restore-keys: |
+          ${{ runner.os }}-ccache-
+          
+    - name: Compile inside docker for Arch Linux
+      run: |
+        docker pull archlinux:base-devel
+        docker run --rm \
+          -v $GITHUB_WORKSPACE:/workspace \
+          -v $GITHUB_WORKSPACE/.ccache:/workspace/.ccache \
+          -w /workspace \
+          -e CCACHE_DIR=/workspace/.ccache \
+          archlinux:base-devel bash -c "
+          
+              # Update and install necessary packages
+              pacman -Syu --noconfirm && pacman -S --noconfirm \
+                cmake ninja ccache &&
+              
+              # Set up build and output directories
+              build_path='./build'
+              out_path='./out'
+              mkdir -p \$build_path \$out_path
+
+              # Run cmake configuration
+              cmake -S . -B \$build_path \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DCMAKE_INSTALL_PREFIX=\$out_path \
+                -DCMAKE_CXX_FLAGS=-march=x86-64 \
+                -DCMAKE_C_FLAGS=-march=x86-64 \
+                -DCMAKE_C_COMPILER="gcc" \
+                -DCMAKE_CXX_COMPILER="g++" \
+                -GNinja
+
+              # Build with Ninja
+              ninja -C \$build_path && ninja -C \$build_path install
+              
+          "
+    
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: rpcs3-artifact
+        path: ./out/
