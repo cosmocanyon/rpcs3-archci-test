@@ -54,9 +54,7 @@ jobs:
           
               # Update and install necessary packages
               pacman -Syu --noconfirm && pacman -S --noconfirm \
-                cmake ninja ccache glew openal vulkan-validation-layers qt6-base qt6-declarative qt6-multimedia sdl2 sndio jack2 &&
-
-                
+                cmake ninja ffmpeg ccache glew openal vulkan-validation-layers qt6-base qt6-declarative qt6-multimedia sdl2 sndio jack2 &&
               
               # Set up build and output directories
               build_path='./build'
