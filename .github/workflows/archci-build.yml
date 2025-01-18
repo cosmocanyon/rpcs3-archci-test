@@ -28,7 +28,7 @@ jobs:
             ${{ runner.os }}-rpcs3-submodules-
             
     - name: Inizialize Git Submodules
-      if: steps.cache-submodules.outputs.cache-hit |= 'true'
+      if: steps.cache-submodules.outputs.cache-hit != 'true'
       run: |
          git submodule update --init --recursive \
           && git pull --recurse-submodules
