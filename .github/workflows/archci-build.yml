@@ -37,7 +37,7 @@ jobs:
       id: cache-ccache
       uses: actions/cache@v4
       with:
-        path: .cache
+        path: .ccache
         key: ${{ runner.os }}-ccache-${{ hashFiles('CMakeLists.txt', '**/CMakeLists.txt', '**/*.cpp', '**/*.h') }}
         restore-keys: |
           ${{ runner.os }}-ccache-
@@ -70,8 +70,8 @@ jobs:
                 -DCMAKE_CXX_FLAGS="-march=x86-64" \
                 -DCMAKE_C_FLAGS="-march=x86-64" \
                 -DUSE_SYSTEM_FFMPEG=ON \
-                -DCMAKE_C_COMPILER="ccache gcc" \
-                -DCMAKE_CXX_COMPILER="ccache g++" \
+                -DCMAKE_C_COMPILER="gcc" \
+                -DCMAKE_CXX_COMPILER="g++" \
                 -GNinja
 
               # Build with Ninja
