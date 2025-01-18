@@ -30,8 +30,9 @@ jobs:
     - name: Inizialize Git Submodules
       if: steps.cache-submodules.outputs.cache-hit != 'true'
       run: |
-         git submodule update --init --recursive \
-          && git pull --recurse-submodules
+        git submodule update --init
+         #git submodule update --init --recursive \
+          #&& git pull --recurse-submodules
           
     - name: Cache ccache
       id: cache-ccache
@@ -54,8 +55,8 @@ jobs:
           
               # Update and install necessary packages
               pacman -Syu --noconfirm && pacman -S --noconfirm \
-                cmake ninja ffmpeg ccache glew openal vulkan-validation-layers qt6-base qt6-declarative qt6-multimedia sdl2 sndio jack2 &&
-              
+                cmake ninja ccache glew openal vulkan-validation-layers qt6-base qt6-declarative qt6-multimedia qt6-svg sdl2 sndio jack2 &&
+                
               # Set up build and output directories
               build_path='./build'
               out_path='./out'
