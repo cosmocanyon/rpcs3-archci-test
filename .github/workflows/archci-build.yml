@@ -30,8 +30,8 @@ jobs:
     - name: Inizialize Git Submodules
       if: steps.cache-submodules.outputs.cache-hit != 'true'
       run: |
-        git submodule update --init --recursive
-        git submodule foreach git pull origin master
+        git submodule update --init --recursive \
+        && git pull --recurse-submodules
 
     - name: Cache ccache
       id: cache-ccache
@@ -54,15 +54,12 @@ jobs:
               
               # Update and install necessary packages
               pacman -Syu --noconfirm && pacman -S --noconfirm \
-                cmake ninja ccache glew openal vulkan-validation-layers qt6-base qt6-declarative qt6-multimedia qt6-svg sdl2 sndio jack2 &&
+                cmake ninja ffmpeg ccache glew openal vulkan-validation-layers qt6-base qt6-declarative qt6-multimedia qt6-svg sdl2 sndio jack2 &&
                 
               # Set up build and output directories
               build_path='./build'
               out_path='./out'
               mkdir -p \$build_path \$out_path
-
-              # Ensure FFMPEG is fetched
-              ls ./3rdparty/ffmpeg
 
               # Run cmake configuration
               cmake -S . -B \$build_path \
@@ -72,7 +69,7 @@ jobs:
                 -DCMAKE_C_FLAGS=-march=x86-64 \
                 -DCMAKE_C_COMPILER="gcc" \
                 -DCMAKE_CXX_COMPILER="g++" \
-                -DFFMPEG_DIR=./3rdparty/ffmpeg \
+                -DUSE_SYSTEM_FFMPEG=ON \
                 -GNinja
 
               # Build with Ninja
