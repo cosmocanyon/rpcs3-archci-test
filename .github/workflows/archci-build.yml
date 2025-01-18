@@ -44,6 +44,7 @@ jobs:
           
     - name: Compile inside docker for Arch Linux
       run: |
+        ls -l
         docker pull archlinux:base-devel
         docker run --rm \
           -v $GITHUB_WORKSPACE:/workspace \
@@ -63,6 +64,8 @@ jobs:
               out_path='./out'
               mkdir -p \$build_path \$out_path
 
+              ls -l
+              
               # Run cmake configuration
               cmake -S . -B \$build_path \
                 -DCMAKE_BUILD_TYPE=Release \
