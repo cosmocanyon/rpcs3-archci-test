@@ -62,9 +62,6 @@ jobs:
               build_path='./build'
               out_path='./out'
               mkdir -p \$build_path \$out_path
-
-              export CC='ccache gcc' &&
-              export CXX='ccache g++' &&
               
               # Run cmake configuration
               cmake -S . -B \$build_path \
@@ -72,6 +69,8 @@ jobs:
                 -DCMAKE_INSTALL_PREFIX=\$out_path \
                 -DCMAKE_CXX_FLAGS=-march=x86-64 \
                 -DCMAKE_C_FLAGS=-march=x86-64 \
+                -DCMAKE_C_COMPILER="ccache gcc" \
+                -DCMAKE_CXX_COMPILER="ccache g++" \
                 -DUSE_SYSTEM_FFMPEG=ON \
                 -GNinja
 
