@@ -70,6 +70,7 @@ jobs:
                 -DCMAKE_C_COMPILER="gcc" \
                 -DCMAKE_CXX_COMPILER="g++" \
                 -DUSE_SYSTEM_FFMPEG=ON \
+                -DBUILD_LLVM=ON \
                 -GNinja
 
               # Build with Ninja
