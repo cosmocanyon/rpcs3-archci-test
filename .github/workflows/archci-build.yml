@@ -67,11 +67,11 @@ jobs:
               cmake -S . -B \$build_path \
                 -DCMAKE_BUILD_TYPE=Release \
                 -DCMAKE_INSTALL_PREFIX=\$out_path \
-                -DCMAKE_CXX_FLAGS=-march=x86-64 \
-                -DCMAKE_C_FLAGS=-march=x86-64 \
+                -DCMAKE_CXX_FLAGS="-march=x86-64" \
+                -DCMAKE_C_FLAGS="-march=x86-64" \
+                -DUSE_SYSTEM_FFMPEG=ON \
                 -DCMAKE_C_COMPILER="ccache gcc" \
                 -DCMAKE_CXX_COMPILER="ccache g++" \
-                -DUSE_SYSTEM_FFMPEG=ON \
                 -GNinja
 
               # Build with Ninja
