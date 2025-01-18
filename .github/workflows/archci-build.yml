@@ -53,7 +53,33 @@ jobs:
           -e CCACHE_DIR=/workspace/.ccache \
           archlinux:base-devel bash -c "
             
-            ls -l
+              chown -R $(whoami) /workspace
+              
+              # Update and install necessary packages
+              pacman -Syu --noconfirm && pacman -S --noconfirm \
+                cmake ninja ffmpeg ccache glew openal vulkan-validation-layers qt6-base qt6-declarative qt6-multimedia qt6-svg sdl2 sndio jack2 git opencv &&
+                
+              # Set up build and output directories
+              build_path='./build'
+              out_path='./out'
+              mkdir -p \$build_path \$out_path
+
+              ls -l
+              
+              # Run cmake configuration
+              cmake -S . -B \$build_path \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DCMAKE_INSTALL_PREFIX=\$out_path \
+                -DCMAKE_CXX_FLAGS=-march=x86-64 \
+                -DCMAKE_C_FLAGS=-march=x86-64 \
+                -DCMAKE_C_COMPILER="gcc" \
+                -DCMAKE_CXX_COMPILER="g++" \
+                -DUSE_SYSTEM_FFMPEG=ON \
+                -DBUILD_LLVM=ON \
+                -GNinja
+
+              # Build with Ninja
+              ninja -C \$build_path && ninja -C \$build_path install
           "
     
     - name: Upload artifact
