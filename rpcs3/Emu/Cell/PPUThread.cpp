@@ -40,19 +40,10 @@
 #endif
 #include <llvm/IR/Verifier.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
-#if LLVM_VERSION_MAJOR < 17
-#include <llvm/Support/FormattedStream.h>
-#include <llvm/TargetParser/Host.h>
-#include <llvm/Object/ObjectFile.h>
-#include <llvm/IR/InstIterator.h>
-#include <llvm/IR/LegacyPassManager.h>
-#include <llvm/Transforms/Scalar.h>
-#else
 #include <llvm/Analysis/CGSCCPassManager.h>
 #include <llvm/Analysis/LoopAnalysisManager.h>
 #include <llvm/Passes/PassBuilder.h>
 #include <llvm/Transforms/Scalar/EarlyCSE.h>
-#endif
 #ifdef _MSC_VER
 #pragma warning(pop)
 #else
@@ -5298,16 +5289,11 @@ bool ppu_initialize(const ppu_module<lv2_obj>& info, bool check_only, u64 file_s
 	if (!workload.empty())
 	{
 		// Update progress dialog
-		g_progr_ptotal += workload.size();
+		g_progr_ptotal += ::size32(workload);
 
 		*progress_dialog = get_localized_string(localized_string_id::PROGRESS_DIALOG_COMPILING_PPU_MODULES);
 
-		u32 thread_count = rpcs3::utils::get_max_threads();
-
-		if (workload.size() < thread_count)
-		{
-			thread_count = ::size32(workload);
-		}
+		const u32 thread_count = std::min(::size32(workload), rpcs3::utils::get_max_threads());
 
 		struct thread_index_allocator
 		{
@@ -5442,7 +5428,7 @@ bool ppu_initialize(const ppu_module<lv2_obj>& info, bool check_only, u64 file_s
 		const bool divide_by_twenty = !workload.empty();
 		const usz increment_link_count_at = (divide_by_twenty ? 20 : 1);
 
-		g_progr_ptotal += utils::aligned_div<u64>(link_workload.size(), increment_link_count_at);
+		g_progr_ptotal += static_cast<u32>(utils::aligned_div<u64>(link_workload.size(), increment_link_count_at));
 
 		usz mod_index = umax;
 
@@ -5620,29 +5606,6 @@ static void ppu_initialize2(jit_compiler& jit, const ppu_module<lv2_obj>& module
 			translator.build_interpreter();
 		}
 
-#if LLVM_VERSION_MAJOR < 17
-		legacy::FunctionPassManager pm(_module.get());
-
-		// Basic optimizations
-		//pm.add(createCFGSimplificationPass());
-		//pm.add(createPromoteMemoryToRegisterPass());
-		pm.add(createEarlyCSEPass());
-		//pm.add(createTailCallEliminationPass());
-		//pm.add(createInstructionCombiningPass());
-		//pm.add(createBasicAAWrapperPass());
-		//pm.add(new MemoryDependenceAnalysis());
-		//pm.add(createLICMPass());
-		//pm.add(createLoopInstSimplifyPass());
-		//pm.add(createNewGVNPass());
-		//pm.add(createDeadStoreEliminationPass());
-		//pm.add(createSCCPPass());
-		//pm.add(createReassociatePass());
-		//pm.add(createInstructionCombiningPass());
-		//pm.add(createInstructionSimplifierPass());
-		//pm.add(createAggressiveDCEPass());
-		//pm.add(createCFGSimplificationPass());
-		//pm.add(createLintPass()); // Check
-#else
 		// Create the analysis managers.
 		// These must be declared in this order so that they are destroyed in the
 		// correct order due to inter-analysis-manager references.
@@ -5667,7 +5630,6 @@ static void ppu_initialize2(jit_compiler& jit, const ppu_module<lv2_obj>& module
 		FunctionPassManager fpm;
 		// Basic optimizations
 		fpm.addPass(EarlyCSEPass());
-#endif
 
 		u32 guest_code_size = 0;
 		u32 min_addr = umax;
@@ -5696,11 +5658,7 @@ static void ppu_initialize2(jit_compiler& jit, const ppu_module<lv2_obj>& module
 				{
 #ifdef ARCH_X64 // TODO
 					// Run optimization passes
-#if LLVM_VERSION_MAJOR < 17
-					pm.run(*func);
-#else
 					fpm.run(*func, fam);
-#endif
 #endif // ARCH_X64
 				}
 				else
@@ -5718,11 +5676,7 @@ static void ppu_initialize2(jit_compiler& jit, const ppu_module<lv2_obj>& module
 			{
 #ifdef ARCH_X64 // TODO
 				// Run optimization passes
-#if LLVM_VERSION_MAJOR < 17
-				pm.run(*func);
-#else
 				fpm.run(*func, fam);
-#endif
 #endif // ARCH_X64
 			}
 			else
