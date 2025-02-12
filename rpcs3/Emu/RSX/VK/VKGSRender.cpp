@@ -4,7 +4,6 @@
 
 #include "VKAsyncScheduler.h"
 #include "VKCommandStream.h"
-#include "VKCommonDecompiler.h"
 #include "VKCommonPipelineLayout.h"
 #include "VKCompute.h"
 #include "VKGSRender.h"
@@ -630,6 +629,7 @@ VKGSRender::VKGSRender(utils::serial* ar) noexcept : GSRender(ar)
 	{
 		backend_config.supports_hw_msaa = true;
 		backend_config.supports_hw_a2c = true;
+		backend_config.supports_hw_a2c_1spp = true;
 		backend_config.supports_hw_a2one = m_device->get_alpha_to_one_support();
 	}
 
