@@ -538,6 +538,9 @@ void main_window::show_boot_error(game_boot_result status)
 	case game_boot_result::still_running:
 		message = tr("A game or PS3 application is still running or has yet to be fully stopped.");
 		break;
+	case game_boot_result::firmware_version:
+		message = tr("The game or PS3 application needs a more recent firmware version.");
+		break;
 	case game_boot_result::firmware_missing: // Handled elsewhere
 	case game_boot_result::already_added: // Handled elsewhere
 	case game_boot_result::currently_restricted:
@@ -3380,6 +3383,7 @@ void main_window::CreateConnects()
 		ResizeIcons(index);
 	});
 
+	connect(ui->actionPreferGameDataIcons, &QAction::triggered, m_game_list_frame, &game_list_frame::SetPreferGameDataIcons);
 	connect(ui->showCustomIconsAct, &QAction::triggered, m_game_list_frame, &game_list_frame::SetShowCustomIcons);
 	connect(ui->playHoverGifsAct, &QAction::triggered, m_game_list_frame, &game_list_frame::SetPlayHoverGifs);
 
@@ -3679,6 +3683,7 @@ void main_window::ConfigureGuiFromSettings()
 	m_game_list_frame->SetShowHidden(ui->showHiddenEntriesAct->isChecked()); // prevent GetValue in m_game_list_frame->LoadSettings
 
 	ui->showCompatibilityInGridAct->setChecked(m_gui_settings->GetValue(gui::gl_draw_compat).toBool());
+	ui->actionPreferGameDataIcons->setChecked(m_gui_settings->GetValue(gui::gl_pref_gd_icon).toBool());
 	ui->showCustomIconsAct->setChecked(m_gui_settings->GetValue(gui::gl_custom_icon).toBool());
 	ui->playHoverGifsAct->setChecked(m_gui_settings->GetValue(gui::gl_hover_gifs).toBool());
 

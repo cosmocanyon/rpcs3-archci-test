@@ -3103,7 +3103,18 @@ static T ppu_load_acquire_reservation(ppu_thread& ppu, u32 addr)
 		ppu.last_faddr = 0;
 	}
 
-	ppu.rtime = vm::reservation_acquire(addr) & -128;
+	const u32 res_cached = ppu.res_cached;
+
+	if ((addr & -128) == (res_cached & -128))
+	{
+		// Reload "cached" reservation of previous succeeded conditional store
+		// This seems like a hardware feature according to cellSpursAddUrgentCommand function
+		ppu.rtime -= 128;
+	}
+	else
+	{
+		ppu.rtime = vm::reservation_acquire(addr) & -128;
+	}
 
 	be_t<u64> rdata;
 
@@ -3376,7 +3387,7 @@ static bool ppu_store_reservation(ppu_thread& ppu, u32 addr, u64 reg_value)
 	}
 
 	// Test if store address is on the same aligned 8-bytes memory as load
-	if (const u32 raddr = std::exchange(ppu.raddr, 0); raddr / 8 != addr / 8)
+	if (const u32 raddr = ppu.raddr; raddr / 8 != addr / 8)
 	{
 		// If not and it is on the same aligned 128-byte memory, proceed only if 128-byte reservations are enabled
 		// In realhw the store address can be at any address of the 128-byte cache line
@@ -3389,12 +3400,16 @@ static bool ppu_store_reservation(ppu_thread& ppu, u32 addr, u64 reg_value)
 				data += 0;
 			}
 
+			ppu.raddr = 0;
+			ppu.res_cached = 0;
 			return false;
 		}
 	}
 
 	if (old_data != data || rtime != (res & -128))
 	{
+		ppu.raddr = 0;
+		ppu.res_cached = 0;
 		return false;
 	}
 
@@ -3650,6 +3665,9 @@ static bool ppu_store_reservation(ppu_thread& ppu, u32 addr, u64 reg_value)
 		}
 
 		ppu.last_faddr = 0;
+		ppu.res_cached = ppu.raddr;
+		ppu.rtime += 128;
+		ppu.raddr = 0;
 		return true;
 	}
 
@@ -3669,6 +3687,8 @@ static bool ppu_store_reservation(ppu_thread& ppu, u32 addr, u64 reg_value)
 		ppu.res_notify = 0;
 	}
 
+	ppu.raddr = 0;
+	ppu.res_cached = 0;
 	return false;
 }
 
@@ -4936,9 +4956,9 @@ bool ppu_initialize(const ppu_module<lv2_obj>& info, bool check_only, u64 file_s
 			return +code_ptr;
 		}
 
-		constexpr auto abs_diff = [](u64 a, u64 b) { return a <= b ? b - a : a - b; };
+		[[maybe_unused]] constexpr auto abs_diff = [](u64 a, u64 b) { return a <= b ? b - a : a - b; };
 
-		auto write_le = [](u8*& code, auto value)
+		[[maybe_unused]] auto write_le = [](u8*& code, auto value)
 		{
 			write_to_ptr<le_t<std::remove_cvref_t<decltype(value)>>>(code, value);
 			code += sizeof(value);
@@ -5803,7 +5823,7 @@ static void ppu_initialize2(jit_compiler& jit, const ppu_module<lv2_obj>& module
 				min_addr = std::min<u32>(min_addr, mod_func.addr);
 
 				// Translate
-				if (const auto func = translator.Translate(mod_func))
+				if ([[maybe_unused]] const auto func = translator.Translate(mod_func))
 				{
 #ifdef ARCH_X64 // TODO
 					// Run optimization passes
@@ -5821,7 +5841,7 @@ static void ppu_initialize2(jit_compiler& jit, const ppu_module<lv2_obj>& module
 		// Run this only in one module for all functions compiled
 		if (module_part.jit_bounds)
 		{
-			if (const auto func = translator.GetSymbolResolver(module_part))
+			if ([[maybe_unused]] const auto func = translator.GetSymbolResolver(module_part))
 			{
 #ifdef ARCH_X64 // TODO
 				// Run optimization passes

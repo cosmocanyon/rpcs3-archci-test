@@ -223,6 +223,7 @@ void game_list_frame::LoadSettings()
 	m_category_filters = m_gui_settings->GetGameListCategoryFilters(true);
 	m_grid_category_filters = m_gui_settings->GetGameListCategoryFilters(false);
 	m_draw_compat_status_to_grid = m_gui_settings->GetValue(gui::gl_draw_compat).toBool();
+	m_prefer_game_data_icons = m_gui_settings->GetValue(gui::gl_pref_gd_icon).toBool();
 	m_show_custom_icons = m_gui_settings->GetValue(gui::gl_custom_icon).toBool();
 	m_play_hover_movies = m_gui_settings->GetValue(gui::gl_hover_gifs).toBool();
 
@@ -863,30 +864,15 @@ void game_list_frame::OnRefreshFinished()
 			if (entry->info.serial != other->info.serial) continue;
 
 			// The patch is game data and must have the same serial and an app version
-			static constexpr auto version_is_bigger = [](const std::string& v0, const std::string& v1, const std::string& serial, bool is_fw)
-			{
-				std::add_pointer_t<char> ev0, ev1;
-				const double ver0 = std::strtod(v0.c_str(), &ev0);
-				const double ver1 = std::strtod(v1.c_str(), &ev1);
-
-				if (v0.c_str() + v0.size() == ev0 && v1.c_str() + v1.size() == ev1)
-				{
-					return ver0 > ver1;
-				}
-
-				game_list_log.error("Failed to update the displayed %s numbers for title ID %s\n'%s'-'%s'", is_fw ? "firmware version" : "version", serial, v0, v1);
-				return false;
-			};
-
 			if (other->info.app_ver != cat_unknown_localized)
 			{
 				// Update the app version if it's higher than the disc's version (old games may not have an app version)
-				if (entry->info.app_ver == cat_unknown_localized || version_is_bigger(other->info.app_ver, entry->info.app_ver, entry->info.serial, true))
+				if (entry->info.app_ver == cat_unknown_localized || rpcs3::utils::version_is_bigger(other->info.app_ver, entry->info.app_ver, entry->info.serial, false))
 				{
 					entry->info.app_ver = other->info.app_ver;
 				}
 				// Update the firmware version if possible and if it's higher than the disc's version
-				if (other->info.fw != cat_unknown_localized && version_is_bigger(other->info.fw, entry->info.fw, entry->info.serial, false))
+				if (other->info.fw != cat_unknown_localized && rpcs3::utils::version_is_bigger(other->info.fw, entry->info.fw, entry->info.serial, true))
 				{
 					entry->info.fw = other->info.fw;
 				}
@@ -897,8 +883,8 @@ void game_list_frame::OnRefreshFinished()
 				}
 			}
 
-			// Let's fetch the game data icon if the path was empty for some reason
-			if (entry->info.icon_path.empty())
+			// Let's fetch the game data icon if preferred or if the path was empty for some reason
+			if ((m_prefer_game_data_icons && !entry->has_custom_icon) || entry->info.icon_path.empty())
 			{
 				if (std::string icon_path = other->info.path + "/" + localized_icon; fs::is_file(icon_path))
 				{
@@ -907,6 +893,19 @@ void game_list_frame::OnRefreshFinished()
 				else if (std::string icon_path = other->info.path + "/ICON0.PNG"; fs::is_file(icon_path))
 				{
 					entry->info.icon_path = std::move(icon_path);
+				}
+			}
+
+			// Let's fetch the game data movie if preferred or if the path was empty
+			if (m_prefer_game_data_icons || entry->info.movie_path.empty())
+			{
+				if (std::string movie_path = other->info.path + "/" + localized_movie; fs::is_file(movie_path))
+				{
+					entry->info.movie_path = std::move(movie_path);
+				}
+				else if (std::string movie_path = other->info.path + "/ICON1.PAM"; fs::is_file(movie_path))
+				{
+					entry->info.movie_path = std::move(movie_path);
 				}
 			}
 		}
@@ -2999,6 +2998,16 @@ void game_list_frame::SetShowCompatibilityInGrid(bool show)
 	m_draw_compat_status_to_grid = show;
 	RepaintIcons();
 	m_gui_settings->SetValue(gui::gl_draw_compat, show);
+}
+
+void game_list_frame::SetPreferGameDataIcons(bool enabled)
+{
+	if (m_prefer_game_data_icons != enabled)
+	{
+		m_prefer_game_data_icons = enabled;
+		m_gui_settings->SetValue(gui::gl_pref_gd_icon, enabled);
+		Refresh(true);
+	}
 }
 
 void game_list_frame::SetShowCustomIcons(bool show)
