@@ -54,7 +54,7 @@ jobs:
                           
               # Update and install necessary packages
               pacman -Syu --noconfirm && pacman -S --noconfirm \
-                cmake ninja ffmpeg ccache glew openal vulkan-validation-layers qt6-base qt6-declarative qt6-multimedia qt6-svg sdl2 sndio jack2 git opencv llvm vtk hdf5 &&
+                cmake ninja ffmpeg ccache glew openal vulkan-validation-layers qt6-base qt6-declarative qt6-multimedia qt6-svg sdl3 sndio jack2 git opencv llvm vtk hdf5 &&
 
               git config --global --add safe.directory /workspace
                 
