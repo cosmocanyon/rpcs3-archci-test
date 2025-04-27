@@ -174,7 +174,7 @@ namespace rsx
 			{
 				// Switch to heap storage
 				_data = static_cast<Ty*>(std::malloc(sizeof(Ty) * size));
-				std::memcpy(_data, _local_storage, size_bytes());
+				std::memcpy(static_cast<void*>(_data), _local_storage, size_bytes());
 			}
 			else
 			{
@@ -390,7 +390,7 @@ namespace rsx
 			}
 
 			bool ret = false;
-			for (auto ptr = _data, last = _data + _size - 1; ptr <= last; ptr++)
+			for (auto ptr = _data, last = _data + _size - 1; ptr <= last;)
 			{
 				if (predicate(*ptr))
 				{
@@ -405,8 +405,14 @@ namespace rsx
 
 					// Move item to the end of the list and shrink by 1
 					std::memcpy(ptr, last, sizeof(Ty));
-					last = _data + (--_size);
+					_size--;
+					last--;
+
+					// Retest the same ptr which now has the previous tail item
+					continue;
 				}
+
+				ptr++;
 			}
 
 			return ret;

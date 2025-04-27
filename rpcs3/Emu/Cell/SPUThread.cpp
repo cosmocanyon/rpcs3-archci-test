@@ -1209,8 +1209,6 @@ void spu_thread::dump_regs(std::string& ret, std::any& /*custom_data*/) const
 	u32 saved_pc = umax;
 	const u8* lsa_state_ptr = nullptr;
 
-	const u8* lsa_ptr = _ptr<u8>(ch_mfc_cmd.lsa);
-
 	// Load PC, GPRs and reservation data atomically
 	// We may not load the entire context atomically, but there is importance their state being intact for debugging
 	do
@@ -3833,14 +3831,14 @@ bool spu_thread::do_putllc(const spu_mfc_cmd& args)
 		{
 			if (addr - spurs_addr <= 0x80)
 			{
-				mov_rdata(vm::_ref<spu_rdata_t>(addr), to_write);
+				mov_rdata(*vm::_ptr<spu_rdata_t>(addr), to_write);
 				res += 64;
 				return true;
 			}
 		}
 		else if (!g_use_rtm)
 		{
-			vm::_ref<atomic_t<u32>>(addr) += 0;
+			*vm::_ptr<atomic_t<u32>>(addr) += 0;
 		}
 
 		if (g_use_rtm) [[likely]]
