@@ -4,12 +4,14 @@ if [ -z "$CIRRUS_CI" ]; then
    cd rpcs3 || exit 1
 fi
 
+shellcheck .ci/*.sh
+
 git config --global --add safe.directory '*'
 
-# Pull all the submodules except llvm and opencv
+# Pull all the submodules except llvm, opencv, sdl and curl
 # Note: Tried to use git submodule status, but it takes over 20 seconds
 # shellcheck disable=SC2046
-git submodule -q update --init $(awk '/path/ && !/llvm/ && !/opencv/ { print $3 }' .gitmodules)
+git submodule -q update --init $(awk '/path/ && !/llvm/ && !/opencv/ && !/libsdl-org/ && !/curl/ { print $3 }' .gitmodules)
 
 mkdir build && cd build || exit 1
 
@@ -52,13 +54,13 @@ cmake ..                                               \
     -DOpenGL_GL_PREFERENCE=LEGACY                      \
     -DLLVM_DIR=/opt/llvm/lib/cmake/llvm                \
     -DSTATIC_LINK_LLVM=ON                              \
+    -DBUILD_RPCS3_TESTS="${RUN_UNIT_TESTS}"            \
+    -DRUN_RPCS3_TESTS="${RUN_UNIT_TESTS}"              \
     -G Ninja
 
 ninja; build_status=$?;
 
 cd ..
-
-shellcheck .ci/*.sh
 
 # If it compiled succesfully let's deploy.
 # Azure and Cirrus publish PRs as artifacts only.

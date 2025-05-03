@@ -5,6 +5,8 @@ defaults:
     shell: bash
 on:
   push:
+    branches:
+      - master # Only trigger push event on 'master' branch
   pull_request:
   workflow_dispatch:
 
@@ -20,22 +22,24 @@ env:
 
 jobs:
   Linux_Build:
+    # Only run push event on master branch of main repo, but run all PRs
+    if: github.event_name != 'push' || (github.repository == 'RPCS3/rpcs3' && github.ref_name == 'master')
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: ubuntu-24.04
-            docker_img: "rpcs3/rpcs3-ci-jammy:1.5"
+            docker_img: "rpcs3/rpcs3-ci-jammy:1.6"
             build_sh: "/rpcs3/.ci/build-linux.sh"
             compiler: clang
             UPLOAD_COMMIT_HASH: d812f1254a1157c80fd402f94446310560f54e5f
             UPLOAD_REPO_FULL_NAME: "rpcs3/rpcs3-binaries-linux"
           - os: ubuntu-24.04
-            docker_img: "rpcs3/rpcs3-ci-jammy:1.5"
+            docker_img: "rpcs3/rpcs3-ci-jammy:1.6"
             build_sh: "/rpcs3/.ci/build-linux.sh"
             compiler: gcc
           - os: ubuntu-24.04-arm
-            docker_img: "rpcs3/rpcs3-ci-jammy-aarch64:1.5"
+            docker_img: "rpcs3/rpcs3-ci-jammy-aarch64:1.6"
             build_sh: "/rpcs3/.ci/build-linux-aarch64.sh"
             compiler: clang
             UPLOAD_COMMIT_HASH: a1d35836e8d45bfc6f63c26f0a3e5d46ef622fe1
@@ -52,6 +56,7 @@ jobs:
       COMPILER: ${{ matrix.compiler }}
       UPLOAD_COMMIT_HASH: ${{ matrix.UPLOAD_COMMIT_HASH }}
       UPLOAD_REPO_FULL_NAME: ${{ matrix.UPLOAD_REPO_FULL_NAME }}
+      RUN_UNIT_TESTS: github.event_name == 'pull_request' && 'ON' || 'OFF'
     steps:
       - name: Checkout repository
         uses: actions/checkout@main
@@ -73,7 +78,7 @@ jobs:
             -v $PWD:/rpcs3              \
             --env-file .ci/docker.env \
             -v ${{ env.CCACHE_DIR }}:/root/.ccache  \
-            -v ${{ github.workspace }}/artifacts:/root/artifacts \
+            -v ${{ env.BUILD_ARTIFACTSTAGINGDIRECTORY }}:${{ env.ARTDIR }} \
             ${{ matrix.docker_img }} \
             ${{ matrix.build_sh }}
 
@@ -100,6 +105,8 @@ jobs:
           .ci/github-upload.sh
 
   Windows_Build:
+    # Only run push event on master branch of main repo, but run all PRs
+    if: github.event_name != 'push' || (github.repository == 'RPCS3/rpcs3' && github.ref_name == 'master')
     name: RPCS3 Windows
     runs-on: windows-2025
     env:
@@ -125,6 +132,12 @@ jobs:
         uses: actions/checkout@main
         with:
           fetch-depth: 0
+
+      - name: Setup NuGet
+        uses: nuget/setup-nuget@v2
+
+      - name: Restore NuGet packages
+        run: nuget restore rpcs3.sln
 
       - name: Setup env
         shell: pwsh
@@ -165,7 +178,12 @@ jobs:
 
       - name: Compile RPCS3
         shell: pwsh
-        run: msbuild rpcs3.sln /p:Configuration=Release /v:minimal /p:Platform=x64 /p:CLToolPath=${{ env.CCACHE_BIN_DIR }} /p:UseMultiToolTask=true /p:CustomAfterMicrosoftCommonTargets="${{ github.workspace }}\buildfiles\msvc\ci_only.targets"
+        run: msbuild rpcs3.sln /p:Configuration=Release /v:minimal /p:Platform=x64 /p:PreferredToolArchitecture=x64 /p:CLToolPath=${{ env.CCACHE_BIN_DIR }} /p:UseMultiToolTask=true /p:CustomAfterMicrosoftCommonTargets="${{ github.workspace }}\buildfiles\msvc\ci_only.targets"
+
+      - name: Run Unit Tests
+        if: github.event_name == 'pull_request'
+        shell: pwsh
+        run: build\lib\Release-x64\rpcs3_test.exe
 
       - name: Pack up build artifacts
         run: |
